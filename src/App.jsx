@@ -57,7 +57,7 @@ const TRANSLATIONS = {
   },
 };
 
-const t = (language, key) =>
+const _t = (language, key) =>
   TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
 
 export default function SkyGuardAI() {
@@ -222,7 +222,7 @@ useEffect(() => {
       style={{
        fontFamily:
         language === "hi"
-        ? "'Noto Sans Devanagari', 'Noto Sans', sans-serif"
+        ? "'Noto Sans Devanagari Variable', sans-serif"
         : "Inter, 'Segoe UI', system-ui, sans-serif",
         background: T.offwhite,
         minHeight: "100%",
