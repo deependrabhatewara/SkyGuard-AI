@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    container_name: skyguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: skyguard
+      POSTGRES_PASSWORD: skyguard_pass
+      POSTGRES_DB: skyguard_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skyguard -d skyguard_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skyguard-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://skyguard:skyguard_pass@db:5432/skyguard_db
+      CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://localhost:3000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+volumes:
+  pgdata:
+    driver: local

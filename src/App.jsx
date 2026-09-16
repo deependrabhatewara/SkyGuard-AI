@@ -18,6 +18,12 @@ import ModelPerformanceTab from "./components/tabs/ModelPerformanceTab";
 
 import { useStations, rand, pick } from "./utils/mockData";
 import { T, ANOMALY_TYPES } from "./constants/theme";
+import {
+  checkBackendHealth,
+  fetchLiveStations,
+  mergeLiveObservationIntoStation,
+  postObservation,
+} from "./services/api";
 
 const TRANSLATIONS = {
   en: {
@@ -107,6 +113,48 @@ useEffect(() => {
     window.removeEventListener("offline", handleOffline);
   };
 }, []);
+
+  const [backendConnected, setBackendConnected] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncWithBackend = async () => {
+      const isHealthy = await checkBackendHealth();
+      if (!isMounted) return;
+      setBackendConnected(isHealthy);
+
+      if (isHealthy) {
+        try {
+          const liveStations = await fetchLiveStations();
+          if (liveStations && liveStations.length > 0 && isMounted) {
+            setStations((prev) => {
+              const liveMap = new Map(liveStations.map((s) => [s.id, s]));
+              return prev.map((s) => {
+                const live = liveMap.get(s.id);
+                return live ? mergeLiveObservationIntoStation(s, live) : s;
+              });
+            });
+          }
+        } catch (err) {
+          console.warn("SkyGuard: Live API sync skipped, using local engine", err);
+        }
+      }
+    };
+
+    syncWithBackend();
+
+    const pollTimer = setInterval(() => {
+      if (typeof navigator === "undefined" || navigator.onLine) {
+        syncWithBackend();
+      }
+    }, 6000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(pollTimer);
+    };
+  }, []);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date().toLocaleTimeString("en-IN", { hour12: false })), 1000);
@@ -211,6 +259,22 @@ useEffect(() => {
       pushEvent("Cross-sensor validation completed", T.blue);
       pushEvent(`${ANOMALY_TYPES[faultType]?.label || "Anomaly"} identified — ${targetId}`, T.red);
       pushEvent(`Anomaly confirmed by AI detection engine — ${targetId}`, T.red);
+
+      if (backendConnected) {
+        const targetStation = stations.find((st) => st.id === targetId);
+        if (targetStation) {
+          postObservation({
+            station_id: targetId,
+            temperature: targetStation.temperature,
+            pressure: targetStation.pressure,
+            humidity: targetStation.humidity,
+            wind_speed: targetStation.windSpeed,
+            wind_dir: targetStation.windDir,
+            rainfall: targetStation.rainfall,
+          }).catch((err) => console.warn("Backend telemetry sync skipped:", err));
+        }
+      }
+
       setInjecting(false);
     }, 1200);
   };
@@ -256,6 +320,7 @@ useEffect(() => {
         isOnline={isOnline}
         setLanguage={setLanguage}
         language={language}
+        backendConnected={backendConnected}
       />
       <InfoBar stats={stats} reduceMotion={reduceMotion} lastSync={now} />
       <TabBar active={activeTab} 

@@ -49,7 +49,7 @@ export function genHistory(base, range, hours = 24, anomalyAt = null, anomalyDel
   return pts;
 }
 
-export function makeStation(idx, region, forcedStatus) {
+export function makeStation(idx, region, forcedStatus, forcedAnomalyType) {
   const num = String(idx + 1).padStart(3, "0");
   const id = `AWS-${region.code}-${num}`;
   const jitterLat = region.lat + rand(-0.9, 0.9);
@@ -58,7 +58,7 @@ export function makeStation(idx, region, forcedStatus) {
   const roll = rng();
   const status =
     forcedStatus ||
-    (roll < 0.79 ? "healthy" : roll < 0.9 ? "warning" : roll < 0.985 ? "anomaly" : "offline");
+    (roll < 0.94 ? "healthy" : roll < 0.98 ? "warning" : "healthy");
 
   const baseTemp = rand(21, 35);
   const basePressure = rand(1000, 1015);
@@ -70,14 +70,21 @@ export function makeStation(idx, region, forcedStatus) {
   const humHist = genHistory(baseHumidity, 10, 24);
 
   if (status === "anomaly") {
-    anomalyType = pick(["spike", "stuck", "drift", "dropout", "cross_sensor", "implausible"]);
+    anomalyType = forcedAnomalyType || pick(["spike", "stuck", "drift", "dropout", "cross_sensor", "implausible"]);
     anomalyIdx = 22;
     anomalySource = "sensor_fault";
     confidence = Number(rand(0.85, 0.98).toFixed(2));
-    const delta = pick([1, -1]) * rand(9, 16);
-    tempHist[anomalyIdx] = { ...tempHist[anomalyIdx], value: Number((tempHist[anomalyIdx].value + delta).toFixed(2)), anomalous: true };
+    if (anomalyType === "stuck") {
+      const stuckVal = tempHist[18].value;
+      for (let j = 18; j < 24; j++) {
+        tempHist[j] = { ...tempHist[j], value: stuckVal, anomalous: j >= 20 };
+      }
+    } else {
+      const delta = pick([1, -1]) * rand(9, 16);
+      tempHist[anomalyIdx] = { ...tempHist[anomalyIdx], value: Number((tempHist[anomalyIdx].value + delta).toFixed(2)), anomalous: true };
+    }
   } else if (status === "warning") {
-    anomalyType = pick(["drift", "cross_sensor"]);
+    anomalyType = forcedAnomalyType || pick(["drift", "cross_sensor"]);
     confidence = Number(rand(0.55, 0.75).toFixed(2));
   }
 
@@ -110,16 +117,55 @@ export function useStations() {
     const list = [];
     let i = 0;
     REGIONS.forEach((region) => {
-      const count = Math.floor(rand(3, 6));
+      const count = Math.floor(rand(3, 5));
       for (let k = 0; k < count; k++) {
-        list.push(makeStation(i, region));
+        list.push(makeStation(i, region, "healthy"));
         i++;
       }
     });
-    // guarantee a rich flagship anomaly for the demo narrative
+
+    // 1. Curate exactly 3 Critical (Red) Anomaly stations across regions
+    // Flagship Demo 1: Central India (Madhya Pradesh) - Temperature Spike
     const mpRegion = REGIONS.find((r) => r.code === "MP") || REGIONS[0];
-    list[3] = makeStation(3, mpRegion, "anomaly");
-    list[3].anomalyType = "spike";
+    list[3] = makeStation(3, mpRegion, "anomaly", "spike");
+
+    // Flagship Demo 2: Western Arid (Rajasthan) - Stuck Sensor
+    const rjIdx = list.findIndex((s, idx) => s.state === "Rajasthan" && idx !== 3);
+    if (rjIdx !== -1) {
+      list[rjIdx] = makeStation(rjIdx, REGIONS.find((r) => r.code === "RJ") || REGIONS[5], "anomaly", "stuck");
+    }
+
+    // Flagship Demo 3: Northern Mountain (Uttarakhand) - Physically Implausible Reading
+    const ukIdx = list.findIndex((s, idx) => s.state === "Uttarakhand" && idx !== 3 && idx !== rjIdx);
+    if (ukIdx !== -1) {
+      list[ukIdx] = makeStation(ukIdx, REGIONS.find((r) => r.code === "UK") || REGIONS[3], "anomaly", "implausible");
+    }
+
+    // 2. Curate 3 Warning (Amber) stations
+    // Warning 1: Maharashtra - Sensor Drift
+    const mhIdx = list.findIndex((s, idx) => s.state === "Maharashtra" && ![3, rjIdx, ukIdx].includes(idx));
+    if (mhIdx !== -1) {
+      list[mhIdx] = makeStation(mhIdx, REGIONS.find((r) => r.code === "MH") || REGIONS[13], "warning", "drift");
+    }
+
+    // Warning 2: West Bengal - Cross-Sensor Discordance
+    const wbIdx = list.findIndex((s, idx) => s.state === "West Bengal" && ![3, rjIdx, ukIdx, mhIdx].includes(idx));
+    if (wbIdx !== -1) {
+      list[wbIdx] = makeStation(wbIdx, REGIONS.find((r) => r.code === "WB") || REGIONS[10], "warning", "cross_sensor");
+    }
+
+    // Warning 3: Karnataka - Calibration Drift
+    const kaIdx = list.findIndex((s, idx) => s.state === "Karnataka" && ![3, rjIdx, ukIdx, mhIdx, wbIdx].includes(idx));
+    if (kaIdx !== -1) {
+      list[kaIdx] = makeStation(kaIdx, REGIONS.find((r) => r.code === "KA") || REGIONS[18], "warning", "drift");
+    }
+
+    // 3. Curate 1 Offline (Grey) station (Remote Ladakh mountain telemetry link loss)
+    const jkIdx = list.findIndex((s, idx) => s.state === "Jammu & Kashmir" && ![3, rjIdx, ukIdx, mhIdx, wbIdx, kaIdx].includes(idx));
+    if (jkIdx !== -1) {
+      list[jkIdx] = makeStation(jkIdx, REGIONS.find((r) => r.code === "JK") || REGIONS[0], "offline");
+    }
+
     return list;
   }, []);
 }

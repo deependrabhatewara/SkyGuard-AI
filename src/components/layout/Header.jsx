@@ -1,5 +1,5 @@
 import React from "react";
-import { Radio, Globe, Contrast, HelpCircle } from "lucide-react";
+import { Radio, Globe, Contrast, HelpCircle, Database } from "lucide-react";
 import Badge from "../common/Badge";
 import StatusDot from "../common/StatusDot";
 import { T } from "../../constants/theme";
@@ -27,7 +27,8 @@ export default function Header({
   now,
   isOnline,
   setLanguage,
-  language
+  language,
+  backendConnected,
 }) {
   return (
     <header style={{ background: T.navy, color: T.white, borderBottom: `3px solid ${T.saffron}` }}>
@@ -115,6 +116,27 @@ export default function Header({
   ? (isOnline ? "ऑनलाइन" : "ऑफलाइन")
   : (isOnline ? "Online" : "Offline")}
 </div>
+
+{backendConnected !== undefined && (
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
+      padding: "5px 9px",
+      borderRadius: 6,
+      background: backendConnected ? "rgba(46,109,164,0.25)" : "rgba(124,136,150,0.15)",
+      border: `1px solid ${backendConnected ? "rgba(46,109,164,0.5)" : "rgba(255,255,255,0.15)"}`,
+      color: backendConnected ? "#93C5FD" : "rgba(255,255,255,0.6)",
+      fontSize: 12,
+      fontWeight: 600,
+    }}
+    title={backendConnected ? "Connected to FastAPI Backend (Postgres/Timescale)" : "Running Standalone (In-Browser Simulation Engine)"}
+  >
+    <Database size={13} />
+    {backendConnected ? "API :8000" : "Standalone"}
+  </div>
+)}
 
          <button
             style={navBtnStyle}
