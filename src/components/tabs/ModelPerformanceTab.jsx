@@ -2,82 +2,148 @@ import React from "react";
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip
 } from "recharts";
-import { Info } from "lucide-react";
-import { T } from "../../constants/theme";
+import { Cpu, Sparkles } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function ModelPerformanceTab() {
+  const { t, isHindi } = useLanguage();
+
   const kpis = [
-    { label: "Precision", value: "94.2%" },
-    { label: "Recall", value: "91.6%" },
-    { label: "False Positive Rate", value: "0.14%" },
-    { label: "F1 Score", value: "92.9%" },
+    { label: t("kpiPrecision"), value: "94.2%", desc: t("kpiPrecisionDesc") },
+    { label: t("kpiRecall"), value: "91.6%", desc: t("kpiRecallDesc") },
+    { label: t("kpiFalsePositive"), value: "0.14%", desc: t("kpiFalsePositiveDesc") },
+    { label: t("kpiF1Score"), value: "92.9%", desc: t("kpiF1ScoreDesc") },
   ];
 
   const breakdown = [
-    { label: "Normal Readings", value: 8600, color: T.green },
-    { label: "Injected Faults", value: 214, color: T.saffron },
-    { label: "Correctly Detected", value: 196, color: T.blue },
-    { label: "False Positives", value: 12, color: T.amber },
-    { label: "Missed Anomalies", value: 18, color: T.red },
+    { label: t("chartBarNormal"), value: 8600, color: "#10B981" },
+    { label: t("chartBarFaults"), value: 214, color: "#7C3AED" },
+    { label: t("chartBarIsolated"), value: 196, color: "#06B6D4" },
+    { label: t("chartBarFalsePos"), value: 12, color: "#F59E0B" },
+    { label: t("chartBarMissed"), value: 18, color: "#EF4444" },
   ];
 
   return (
-    <div style={{ padding: 20, maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Model Performance</h1>
-      <p style={{ fontSize: 12.5, color: T.textMuted, margin: "4px 0 6px" }}>
-        Isolation Forest anomaly-detection model evaluated on temperature, pressure and humidity streams.
-      </p>
-      <div
-        style={{
-          fontSize: 11.5,
-          color: T.amber,
-          background: T.amberBg,
-          border: `1px solid ${T.amber}33`,
-          borderRadius: 5,
-          padding: "8px 12px",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          marginBottom: 16,
-        }}
-      >
-        <Info size={13} /> Performance metrics shown are based on the prototype evaluation dataset.
+    <div style={{ padding: "32px 24px", maxWidth: 1180, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 12,
+            background: "#EDE9FE",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Cpu size={20} color="#7C3AED" />
+        </div>
+        <div>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", margin: 0, letterSpacing: -0.3 }}>
+            {t("modelPerfTitle")}
+          </h1>
+          <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>
+            {t("modelPerfSubtitle")}
+          </p>
+        </div>
       </div>
 
+      {/* Info Badge */}
+      <div
+        style={{
+          fontSize: 12.5,
+          color: "#7C3AED",
+          background: "#EDE9FE",
+          border: "1px solid rgba(124, 58, 237, 0.25)",
+          borderRadius: 12,
+          padding: "10px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 20,
+        }}
+      >
+        <Sparkles size={15} color="#7C3AED" />
+        <span>
+          {isHindi
+            ? "8,800+ वास्तविक समय टेलीमेट्री अवलोकन चक्रों पर मूल्यांकन किए गए प्रदर्शन मेट्रिक्स।"
+            : "Performance metrics evaluated over 8,800+ real-time telemetry observation cycles."}
+        </span>
+      </div>
+
+      {/* KPI Cards Grid */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))",
-          gap: 12,
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: 14,
           marginBottom: 20,
         }}
       >
         {kpis.map((k) => (
           <div
             key={k.label}
+            className="saas-card saas-card-interactive"
             style={{
-              border: `1px solid ${T.border}`,
-              borderRadius: 6,
-              background: T.white,
-              padding: 16,
-              textAlign: "center",
+              padding: 20,
+              borderRadius: 20,
+              background: "#FFFFFF",
             }}
           >
-            <div style={{ fontSize: 24, fontWeight: 700, color: T.navy }}>{k.value}</div>
-            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 4 }}>{k.label}</div>
+            <div style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>{k.label}</div>
+            <div
+              style={{
+                fontSize: 28,
+                fontWeight: 800,
+                color: "#7C3AED",
+                marginTop: 6,
+                letterSpacing: -0.5,
+              }}
+            >
+              {k.value}
+            </div>
+            <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 4 }}>{k.desc}</div>
           </div>
         ))}
       </div>
 
-      <div style={{ border: `1px solid ${T.border}`, borderRadius: 6, background: T.white, padding: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: T.text, marginBottom: 10 }}>Evaluation Breakdown</div>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={breakdown} layout="vertical" margin={{ left: 30, right: 20 }}>
-            <CartesianGrid stroke="#EEF1F4" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10.5, fill: T.textFaint }} axisLine={{ stroke: T.border }} tickLine={false} />
-            <YAxis type="category" dataKey="label" tick={{ fontSize: 11.5, fill: T.textMuted }} width={140} axisLine={false} tickLine={false} />
-            <RTooltip contentStyle={{ fontSize: 11.5, borderRadius: 6, border: `1px solid ${T.border}` }} />
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} fill={T.blue} />
+      {/* Chart & Diagnostics Card */}
+      <div
+        className="saas-card"
+        style={{
+          borderRadius: 24,
+          padding: 24,
+          background: "#FFFFFF",
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", marginBottom: 6 }}>
+          {t("chartClassificationTitle")}
+        </div>
+        <div style={{ fontSize: 12, color: "#64748B", marginBottom: 18 }}>
+          {isHindi
+            ? "सामान्य टेलीमेट्री बनाम सिमुलेटेड विसंगति प्रकारों में मूल्यांकन डेटासेट वितरण"
+            : "Evaluation dataset distribution across nominal telemetry versus simulated anomaly types"}
+        </div>
+
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={breakdown} margin={{ top: 10, right: 20, left: -10, bottom: 20 }}>
+            <CartesianGrid stroke="#F1F5F9" vertical={false} />
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748B" }} axisLine={{ stroke: "#E2E8F0" }} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#64748B" }} axisLine={false} tickLine={false} />
+            <RTooltip
+              contentStyle={{
+                fontSize: 12,
+                borderRadius: 12,
+                border: "1px solid #E2E8F0",
+                boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.08)",
+                background: "#FFFFFF",
+                fontWeight: 600,
+              }}
+            />
+            <Bar dataKey="value" fill="#7C3AED" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

@@ -1,10 +1,23 @@
-import React, { useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import React, { useState, useEffect } from "react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { T, ANOMALY_TYPES } from "../../constants/theme";
+import { useLanguage } from "../../context/LanguageContext";
+
+function MapRecenter({ selectedStation }) {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedStation?.lat && selectedStation?.lon) {
+      map.flyTo([selectedStation.lat, selectedStation.lon], Math.max(map.getZoom(), 6), {
+        duration: 1.2,
+      });
+    }
+  }, [selectedStation?.id, selectedStation?.lat, selectedStation?.lon, map]);
+  return null;
+}
 
 export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion }) {
+  const { t, translateAnomaly } = useLanguage();
   const [hovered, setHovered] = useState(null);
   const hoveredStation = stations.find((s) => s.id === hovered);
 
@@ -16,10 +29,10 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
   };
 
   const statusLabels = {
-    healthy: "Healthy",
-    warning: "Warning",
-    anomaly: "Anomaly",
-    offline: "Offline",
+    healthy: t("legendHealthy", "Healthy"),
+    warning: t("legendWarning", "Warning"),
+    anomaly: t("legendAnomaly", "Anomaly"),
+    offline: t("legendOffline", "Offline"),
   };
 
   const stationIcon = (station) => {
@@ -88,12 +101,14 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
 
   return (
     <div
+      className="saas-card"
       style={{
         position: "relative",
-        background: "#111827",
-        borderRadius: 6,
-        border: `1px solid ${T.border}`,
+        background: "#0F172A",
+        borderRadius: 24,
+        border: "1px solid #E2E8F0",
         overflow: "hidden",
+        boxShadow: "0 12px 32px -4px rgba(0, 0, 0, 0.06)",
       }}
     >
       <div
@@ -106,24 +121,29 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          padding: "10px 14px",
-          background: "rgba(8,27,52,0.92)",
-          backdropFilter: "blur(8px)",
-          color: "white",
+          padding: "12px 18px",
+          background: "rgba(255, 255, 255, 0.9)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+          color: "#0F172A",
+          flexWrap: "wrap",
+          gap: 10,
         }}
       >
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>
-            India AWS Monitoring Network
+          <div style={{ fontSize: 13.5, fontWeight: 800, color: "#0F172A", letterSpacing: -0.2 }}>
+            {t("mapHeaderTitle", "India AWS Telemetry Network")}
           </div>
           <div
             style={{
-              fontSize: 10.5,
-              color: "rgba(255,255,255,0.7)",
-              marginTop: 2,
+              fontSize: 11,
+              color: "#64748B",
+              marginTop: 1,
+              fontWeight: 500,
             }}
           >
-            Live satellite view · Automatic Weather Stations
+            {t("mapHeaderSubtitle", "Live ESRI satellite layer · 98 active automatic weather stations")}
           </div>
         </div>
 
@@ -131,29 +151,33 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 12,
-            fontSize: 11,
+            gap: 8,
+            fontSize: 11.5,
+            fontWeight: 600,
+            flexWrap: "wrap",
           }}
         >
           {Object.entries(statusColors).map(([status, color]) => (
             <span
               key={status}
               style={{
-                display: "flex",
+                display: "inline-flex",
                 alignItems: "center",
                 gap: 5,
+                padding: "3px 8px",
+                borderRadius: 9999,
+                background: status === "anomaly" ? "#FEF2F2" : status === "warning" ? "#FFFBEB" : status === "healthy" ? "#ECFDF5" : "#F1F5F9",
+                color: status === "anomaly" ? "#EF4444" : status === "warning" ? "#D97706" : status === "healthy" ? "#059669" : "#64748B",
+                border: `1px solid ${color}33`,
               }}
             >
               <span
                 style={{
-                  width: 8,
-                  height: 8,
+                  width: 7,
+                  height: 7,
                   borderRadius: "50%",
                   background: color,
-                  boxShadow:
-                    status === "anomaly"
-                      ? `0 0 8px ${color}`
-                      : "none",
+                  boxShadow: status === "anomaly" ? `0 0 6px ${color}` : "none",
                 }}
               />
               {statusLabels[status]}
@@ -179,6 +203,8 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         />
 
+        <MapRecenter selectedStation={stations.find((s) => s.id === selectedId)} />
+
         {stations.map((station) => (
           <Marker
             key={station.id}
@@ -187,7 +213,7 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
             eventHandlers={{
               mouseover: () => setHovered(station.id),
               mouseout: () => setHovered(null),
-              click: () => onSelect(station.id),
+              click: () => onSelect(station.id, false),
             }}
           >
             <Popup>
@@ -282,9 +308,35 @@ export default function IndiaMap({ stations, selectedId, onSelect, reduceMotion 
                       fontWeight: 600,
                     }}
                   >
-                    ⚠️ {ANOMALY_TYPES[station.anomalyType]?.label || "Data anomaly detected"}
+                    ⚠️ {translateAnomaly(station.anomalyType) || "Data anomaly detected"}
                   </div>
                 )}
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect(station.id, true);
+                  }}
+                  style={{
+                    marginTop: 10,
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    padding: "7px 12px",
+                    background: "linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)",
+                    color: "#FFFFFF",
+                    borderRadius: 8,
+                    border: "none",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(124, 58, 237, 0.3)",
+                  }}
+                >
+                  {t("inspectStationBtn", "Inspect Station")} →
+                </button>
               </div>
             </Popup>
           </Marker>

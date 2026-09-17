@@ -1,35 +1,26 @@
 import React, { useState, useMemo } from "react";
-import { Search, FileDown, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, FileDown, ChevronLeft, ChevronRight, Table2, ArrowRight } from "lucide-react";
 import StatusDot from "../common/StatusDot";
-import Badge from "../common/Badge";
-import { T, STATUS_META } from "../../constants/theme";
+import { STATUS_META } from "../../constants/theme";
+import { useLanguage } from "../../context/LanguageContext";
 
-const smallBtn = (color) => ({
-  fontSize: 11,
-  fontWeight: 600,
-  padding: "5px 9px",
-  borderRadius: 4,
-  border: "none",
-  background: color,
-  color: T.white,
+const tdStyle = { padding: "12px 14px", color: "#0F172A", fontSize: 13, whiteSpace: "nowrap" };
+const thStyle = {
+  padding: "12px 14px",
+  color: "#64748B",
+  fontSize: 11.5,
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+  textAlign: "left",
+  borderBottom: "1px solid #E2E8F0",
+  background: "#F8FAFC",
   cursor: "pointer",
-});
-
-const smallBtnOutline = {
-  fontSize: 11,
-  fontWeight: 600,
-  padding: "5px 9px",
-  borderRadius: 4,
-  border: `1px solid ${T.border}`,
-  background: T.white,
-  color: T.textMuted,
-  cursor: "pointer",
+  userSelect: "none",
 };
 
-const tdStyle = { padding: "9px 12px", color: T.text, whiteSpace: "nowrap" };
-const srLabel = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
-
-export default function TableTab({ stations, onSelect, setActiveTab }) {
+export default function TableTab({ stations, onSelect }) {
+  const { t, translateState, isHindi } = useLanguage();
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("id");
   const [sortDir, setSortDir] = useState("asc");
@@ -55,13 +46,13 @@ export default function TableTab({ stations, onSelect, setActiveTab }) {
   const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const columns = [
-    { key: "id", label: "Station ID" },
-    { key: "state", label: "State" },
-    { key: "temperature", label: "Temp (°C)" },
-    { key: "pressure", label: "Pressure (hPa)" },
-    { key: "humidity", label: "Humidity (%)" },
-    { key: "lastObservation", label: "Last Update" },
-    { key: "status", label: "Health" },
+    { key: "id", label: t("colStationId", "Station ID") },
+    { key: "state", label: t("colState", "State") },
+    { key: "temperature", label: t("colTemp", "Temp (°C)") },
+    { key: "pressure", label: t("colPressure", "Pressure (hPa)") },
+    { key: "humidity", label: t("colHumidity", "Humidity (%)") },
+    { key: "lastObservation", label: t("colLastPing", "Last Ingestion") },
+    { key: "status", label: t("colStatus", "Health Status") },
   ];
 
   const toggleSort = (key) => {
@@ -99,96 +90,167 @@ export default function TableTab({ stations, onSelect, setActiveTab }) {
   };
 
   return (
-    <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
-      <div className="flex items-center justify-between" style={{ marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-        <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: T.text, margin: 0 }}>Station Registry</h1>
-          <p style={{ fontSize: 12.5, color: T.textMuted, margin: "4px 0 0" }}>
-            Full list of automatic weather stations with current readings.
-          </p>
+    <div style={{ padding: "32px 24px", maxWidth: 1240, margin: "0 auto" }}>
+      {/* Top Header */}
+      <div className="flex items-center justify-between" style={{ marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div
+            style={{
+              width: 38,
+              height: 38,
+              borderRadius: 12,
+              background: "#EDE9FE",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Table2 size={18} color="#7C3AED" />
+          </div>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0F172A", margin: 0, letterSpacing: -0.3 }}>
+              {t("registryTitle", "National Station Registry")}
+            </h1>
+            <p style={{ fontSize: 13, color: "#64748B", margin: "2px 0 0" }}>
+              {isHindi ? `भारत भर में ${stations.length} स्वचालित मौसम स्टेशनों का संपूर्ण डेटाबेस` : `Complete index of ${stations.length} automatic weather stations across India`}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center" style={{ gap: 8 }}>
+
+        <div className="flex items-center" style={{ gap: 10, flexWrap: "wrap" }}>
+          {/* Search Box */}
           <div style={{ position: "relative" }}>
-            <Search size={14} style={{ position: "absolute", left: 8, top: 8 }} color={T.textFaint} />
+            <Search size={15} style={{ position: "absolute", left: 12, top: 11, color: "#94A3B8" }} />
             <input
               value={query}
               onChange={(e) => {
                 setQuery(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search stations…"
-              style={{ padding: "7px 10px 7px 28px", fontSize: 12.5, border: `1px solid ${T.border}`, borderRadius: 5, width: 200 }}
+              placeholder={t("searchRegistryPlaceholder", "Search station or state...")}
+              style={{
+                padding: "8px 14px 8px 36px",
+                fontSize: 13,
+                borderRadius: 12,
+                border: "1px solid #E2E8F0",
+                background: "#FFFFFF",
+                color: "#0F172A",
+                outline: "none",
+                width: 240,
+              }}
             />
           </div>
-          <button
-            onClick={exportCSV}
-            style={{ ...smallBtn(T.blue), padding: "8px 12px", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <FileDown size={13} /> Export CSV
+
+          <button onClick={exportCSV} className="saas-btn-secondary" style={{ padding: "8px 14px", fontSize: 12.5 }}>
+            <FileDown size={14} /> {t("exportCsvBtn", "Export CSV")}
           </button>
         </div>
       </div>
 
-      <div style={{ border: `1px solid ${T.border}`, borderRadius: 6, overflow: "hidden", background: T.white }}>
+      {/* Table Container Card */}
+      <div
+        className="saas-card"
+        style={{
+          borderRadius: 24,
+          overflow: "hidden",
+          background: "#FFFFFF",
+          border: "1px solid #E2E8F0",
+        }}
+      >
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
-            <caption style={srLabel}>Automatic weather station registry with live readings</caption>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
-              <tr style={{ background: T.offwhite, borderBottom: `1px solid ${T.border}` }}>
+              <tr>
                 {columns.map((c) => (
-                  <th
-                    key={c.key}
-                    scope="col"
-                    onClick={() => toggleSort(c.key)}
-                    style={{
-                      textAlign: "left",
-                      padding: "9px 12px",
-                      fontWeight: 700,
-                      color: T.textMuted,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    <span className="flex items-center" style={{ gap: 4 }}>
+                  <th key={c.key} style={thStyle} onClick={() => toggleSort(c.key)}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       {c.label}
                       {sortKey === c.key && (
-                        <ChevronDown size={12} style={{ transform: sortDir === "asc" ? "rotate(180deg)" : "none" }} />
+                        <span style={{ fontSize: 10, color: "#7C3AED" }}>
+                          {sortDir === "asc" ? "▲" : "▼"}
+                        </span>
                       )}
-                    </span>
+                    </div>
                   </th>
                 ))}
-                <th scope="col" style={{ padding: "9px 12px" }}>
-                  Action
-                </th>
+                <th style={{ ...thStyle, cursor: "default" }}>{t("colActions", "Action")}</th>
               </tr>
             </thead>
             <tbody>
-              {pageRows.map((s) => {
+              {pageRows.map((s, idx) => {
                 const meta = STATUS_META[s.status] || STATUS_META.healthy;
+                const statusName = {
+                  healthy: t("legendHealthy", "Healthy"),
+                  warning: t("legendWarning", "Warning"),
+                  anomaly: t("legendAnomaly", "Anomaly"),
+                  offline: t("legendOffline", "Offline"),
+                }[s.status] || meta.label;
+
                 return (
-                  <tr key={s.id} style={{ borderBottom: `1px solid ${T.border}` }}>
+                  <tr
+                    key={s.id}
+                    style={{
+                      borderBottom: "1px solid #F1F5F9",
+                      background: idx % 2 === 0 ? "#FFFFFF" : "#FAFBFD",
+                      transition: "background 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F5F3FF")}
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = idx % 2 === 0 ? "#FFFFFF" : "#FAFBFD")
+                    }
+                  >
                     <td style={tdStyle}>
-                      <strong>{s.id}</strong>
+                      <span style={{ fontWeight: 700, color: "#0F172A" }}>{s.id}</span>
                     </td>
-                    <td style={tdStyle}>{s.state}</td>
-                    <td style={tdStyle}>{s.temperature.toFixed(1)}</td>
-                    <td style={tdStyle}>{s.pressure.toFixed(1)}</td>
-                    <td style={tdStyle}>{s.humidity.toFixed(1)}</td>
-                    <td style={tdStyle}>{s.lastObservation}</td>
+                    <td style={tdStyle}>{translateState(s.state)}</td>
+                    <td style={{ ...tdStyle, fontVariantNumeric: "tabular-nums" }}>
+                      {s.temperature.toFixed(1)}°C
+                    </td>
+                    <td style={{ ...tdStyle, fontVariantNumeric: "tabular-nums" }}>
+                      {s.pressure.toFixed(1)} hPa
+                    </td>
+                    <td style={{ ...tdStyle, fontVariantNumeric: "tabular-nums" }}>
+                      {s.humidity.toFixed(1)}%
+                    </td>
+                    <td style={{ ...tdStyle, color: "#64748B" }}>{s.lastObservation}</td>
                     <td style={tdStyle}>
-                      <Badge color={meta.color} bg={meta.bg}>
-                        <StatusDot status={s.status} size={6} /> {meta.label}
-                      </Badge>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 5,
+                          padding: "3px 9px",
+                          borderRadius: 9999,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          background: meta.bg,
+                          color: meta.color,
+                        }}
+                      >
+                        <StatusDot status={s.status} size={6} />
+                        {statusName}
+                      </span>
                     </td>
                     <td style={tdStyle}>
                       <button
-                        style={smallBtnOutline}
                         onClick={() => {
-                          onSelect(s.id);
-                          setActiveTab("dashboard");
+                          onSelect(s.id, true);
+                        }}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#7C3AED",
+                          background: "#EDE9FE",
+                          border: "none",
+                          padding: "5px 10px",
+                          borderRadius: 8,
+                          cursor: "pointer",
                         }}
                       >
-                        View
+                        {t("inspectBtn", "View")} <ArrowRight size={12} />
                       </button>
                     </td>
                   </tr>
@@ -197,27 +259,43 @@ export default function TableTab({ stations, onSelect, setActiveTab }) {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Bar */}
         <div
           className="flex items-center justify-between"
-          style={{ padding: 12, borderTop: `1px solid ${T.border}`, fontSize: 12, color: T.textMuted }}
+          style={{
+            padding: "16px 20px",
+            borderTop: "1px solid #E2E8F0",
+            background: "#F8FAFC",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
         >
-          <span>
-            Page {page} of {totalPages} · {filtered.length} stations
-          </span>
-          <div className="flex" style={{ gap: 6 }}>
+          <div style={{ fontSize: 12.5, color: "#64748B" }}>
+            Showing <strong>{(page - 1) * pageSize + 1}</strong> to{" "}
+            <strong>{Math.min(page * pageSize, filtered.length)}</strong> of{" "}
+            <strong>{filtered.length}</strong> stations
+          </div>
+
+          <div className="flex items-center" style={{ gap: 8 }}>
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
-              style={smallBtnOutline}
+              className="saas-btn-secondary"
+              style={{ padding: "6px 12px", fontSize: 12 }}
             >
-              <ChevronLeft size={13} />
+              <ChevronLeft size={14} /> Prev
             </button>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: "#0F172A", padding: "0 6px" }}>
+              Page {page} of {totalPages}
+            </span>
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              style={smallBtnOutline}
+              className="saas-btn-secondary"
+              style={{ padding: "6px 12px", fontSize: 12 }}
             >
-              <ChevronRight size={13} />
+              Next <ChevronRight size={14} />
             </button>
           </div>
         </div>

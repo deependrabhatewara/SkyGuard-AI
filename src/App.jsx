@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import Header from "./components/layout/Header";
-import InfoBar from "./components/layout/InfoBar";
 import TabBar from "./components/layout/TabBar";
 import Footer from "./components/layout/Footer";
 
@@ -8,6 +7,7 @@ import Sidebar from "./components/dashboard/Sidebar";
 import IndiaMap from "./components/map/IndiaMap";
 import SimulationPanel from "./components/dashboard/SimulationPanel";
 import StationDetail from "./components/station/StationDetail";
+import StationInspectModal from "./components/station/StationInspectModal";
 import EventTimeline from "./components/dashboard/EventTimeline";
 import AnomalyIntelligencePanel from "./components/dashboard/AnomalyIntelligencePanel";
 
@@ -17,7 +17,8 @@ import DataQualityTab from "./components/tabs/DataQualityTab";
 import ModelPerformanceTab from "./components/tabs/ModelPerformanceTab";
 
 import { useStations, rand, pick } from "./utils/mockData";
-import { T, ANOMALY_TYPES } from "./constants/theme";
+import { ANOMALY_TYPES } from "./constants/theme";
+import { useLanguage } from "./context/LanguageContext";
 import {
   checkBackendHealth,
   fetchLiveStations,
@@ -25,94 +26,61 @@ import {
   postObservation,
 } from "./services/api";
 
-const TRANSLATIONS = {
-  en: {
-    monitoringDashboard: "Monitoring Dashboard",
-    alertCenter: "Alert Center",
-    stationRegistry: "Station Registry",
-    dataQuality: "Data Quality",
-    modelPerformance: "Model Performance",
-    online: "Online",
-    offline: "Offline",
-    healthy: "Healthy",
-    warning: "Warning",
-    anomaly: "Anomaly",
-    station: "Station",
-    temperature: "Temperature",
-    humidity: "Humidity",
-    pressure: "Pressure",
-    wind: "Wind Speed",
-  },
-
-  hi: {
-    monitoringDashboard: "निगरानी डैशबोर्ड",
-    alertCenter: "अलर्ट केंद्र",
-    stationRegistry: "स्टेशन रजिस्ट्री",
-    dataQuality: "डेटा गुणवत्ता",
-    modelPerformance: "मॉडल प्रदर्शन",
-    online: "ऑनलाइन",
-    offline: "ऑफलाइन",
-    healthy: "स्वस्थ",
-    warning: "चेतावनी",
-    anomaly: "असामान्यता",
-    station: "स्टेशन",
-    temperature: "तापमान",
-    humidity: "आर्द्रता",
-    pressure: "वायुदाब",
-    wind: "हवा की गति",
-  },
-};
-
-const _t = (language, key) =>
-  TRANSLATIONS[language]?.[key] || TRANSLATIONS.en[key] || key;
-
 export default function SkyGuardAI() {
+  const { language, setLanguage, isHindi, translateAnomaly } = useLanguage();
   const stationsInit = useStations();
   const [stations, setStations] = useState(stationsInit);
   const [selectedId, setSelectedId] = useState(stationsInit[3]?.id || null);
   const [filters, setFilters] = useState({ query: "", state: "all", status: "all" });
   const [activeTab, setActiveTab] = useState("dashboard");
   const [acknowledged, setAcknowledged] = useState(new Set());
+  const [inspectedStationId, setInspectedStationId] = useState(null);
   const [injecting, setInjecting] = useState(false);
   const [events, setEvents] = useState([
-    { time: "09:41:32", text: "Temperature spike identified — AWS-MP-004", color: T.red },
-    { time: "09:41:34", text: "Cross-sensor validation completed", color: T.blue },
-    { time: "09:41:36", text: "Anomaly confirmed by AI detection engine", color: T.red },
+    {
+      time: "09:41:32",
+      text: isHindi
+        ? "तापमान स्पाइक पहचाना गया — AWS-MP-004"
+        : "Temperature spike identified — AWS-MP-004",
+      color: "#EF4444",
+    },
+    {
+      time: "09:41:34",
+      text: isHindi
+        ? "क्रॉस-सेंसर सत्यापन पूर्ण: कोई क्षेत्रीय पुष्टि नहीं मिली"
+        : "Cross-sensor validation completed: no regional corroboration",
+      color: "#7C3AED",
+    },
+    {
+      time: "09:41:36",
+      text: isHindi
+        ? "एआई आइसोलेशन फॉरेस्ट द्वारा विसंगति की पुष्टि (96% विश्वसनीयता)"
+        : "Anomaly confirmed by AI Isolation Forest (96% confidence)",
+      color: "#EF4444",
+    },
   ]);
   const [fontScale, setFontScale] = useState(1);
   const [highContrast, setHighContrast] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
 
-  const [language, setLanguage] = useState(
-  () => localStorage.getItem("skyguard-language") || "en"
-);
-
-useEffect(() => {
-  localStorage.setItem("skyguard-language", language);
-}, [language]);
-
-useEffect(() => {
-  document.documentElement.lang = language === "hi" ? "hi" : "en";
-}, [language]);
-
-  const [now, setNow] = useState(() => new Date().toLocaleTimeString("en-IN", { hour12: false }));
+  const [now, setNow] = useState(() => new Date().toLocaleTimeString(isHindi ? "hi-IN" : "en-IN", { hour12: false }));
 
   const [isOnline, setIsOnline] = useState(
-  () => typeof navigator !== "undefined" ? navigator.onLine : true
-);
+    () => typeof navigator !== "undefined" ? navigator.onLine : true
+  );
 
-useEffect(() => {
-  const handleOnline = () => setIsOnline(true);
-  const handleOffline = () => setIsOnline(false);
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-  window.addEventListener("online", handleOnline);
-  window.addEventListener("offline", handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
-  return () => {
-    window.removeEventListener("online", handleOnline);
-    window.removeEventListener("offline", handleOffline);
-  };
-}, []);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   const [backendConnected, setBackendConnected] = useState(false);
 
@@ -173,14 +141,6 @@ useEffect(() => {
     return true;
   }), [stations, filters]);
 
-  const stats = useMemo(() => ({
-    total: stations.length,
-    healthy: stations.filter((s) => s.status === "healthy").length,
-    warning: stations.filter((s) => s.status === "warning").length,
-    anomaly: stations.filter((s) => s.status === "anomaly").length,
-    offline: stations.filter((s) => s.status === "offline").length,
-  }), [stations]);
-
   const selectedStation = stations.find((s) => s.id === selectedId) || null;
 
   const neighbors = useMemo(() => {
@@ -192,10 +152,54 @@ useEffect(() => {
       .slice(0, 3);
   }, [stations, selectedStation]);
 
-  const handleSelect = useCallback((id) => { setSelectedId(id); }, []);
+  const stationDetailRef = useRef(null);
+
+  const handleSelect = useCallback((id, scroll = true) => {
+    setSelectedId(id);
+    setActiveTab("dashboard");
+
+    const target = stations.find((s) => s.id === id);
+    if (target) {
+      setFilters((prev) => {
+        const stateMismatch = prev.state !== "all" && prev.state !== target.state;
+        const statusMismatch = prev.status !== "all" && prev.status !== target.status;
+        const queryMismatch =
+          prev.query &&
+          !target.id.toLowerCase().includes(prev.query.toLowerCase()) &&
+          !target.name.toLowerCase().includes(prev.query.toLowerCase());
+
+        if (stateMismatch || statusMismatch || queryMismatch) {
+          return { query: "", state: "all", status: "all" };
+        }
+        return prev;
+      });
+    }
+
+    if (scroll) {
+      setTimeout(() => {
+        stationDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [stations]);
+
   const handleAcknowledge = useCallback((id) => {
     setAcknowledged((prev) => new Set(prev).add(id));
   }, []);
+
+  const handleInspect = useCallback((id) => {
+    setSelectedId(id);
+    setInspectedStationId(id);
+  }, []);
+
+  const inspectedStation = stations.find((s) => s.id === inspectedStationId) || null;
+  const inspectedNeighbors = useMemo(() => {
+    if (!inspectedStation) return [];
+    return stations
+      .filter((s) => s.id !== inspectedStation.id)
+      .map((s) => ({ ...s, dist: Math.hypot(s.lat - inspectedStation.lat, s.lon - inspectedStation.lon) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+  }, [stations, inspectedStation]);
 
   const pushEvent = (text, color) => {
     const t = new Date().toLocaleTimeString("en-IN", { hour12: false });
@@ -210,7 +214,7 @@ useEffect(() => {
       setSelectedId(targetId);
     }
     setInjecting(true);
-    pushEvent(`New observation received — ${targetId}`, T.blue);
+    pushEvent(`Observation received — ${targetId}`, "#6366F1");
 
     setTimeout(() => {
       setStations((prev) => prev.map((s) => {
@@ -255,10 +259,24 @@ useEffect(() => {
         });
       }
 
-      pushEvent("Pattern analysis in progress", T.blue);
-      pushEvent("Cross-sensor validation completed", T.blue);
-      pushEvent(`${ANOMALY_TYPES[faultType]?.label || "Anomaly"} identified — ${targetId}`, T.red);
-      pushEvent(`Anomaly confirmed by AI detection engine — ${targetId}`, T.red);
+      pushEvent(
+        isHindi
+          ? "मल्टी-सेंसर क्रॉस सत्यापन आरंभ किया गया"
+          : "Multi-sensor cross validation initiated",
+        "#7C3AED"
+      );
+      pushEvent(
+        isHindi
+          ? `${translateAnomaly(faultType)} पहचानी गई — ${targetId}`
+          : `${ANOMALY_TYPES[faultType]?.label || "Anomaly"} detected — ${targetId}`,
+        "#EF4444"
+      );
+      pushEvent(
+        isHindi
+          ? `एआई डिटेक्शन इंजन ने ${targetId} पर दोष की पुष्टि की`
+          : `AI Detection Engine confirmed fault on ${targetId}`,
+        "#EF4444"
+      );
 
       if (backendConnected) {
         const targetStation = stations.find((st) => st.id === targetId);
@@ -281,34 +299,33 @@ useEffect(() => {
 
   const alertCount = stations.filter((s) => s.status === "anomaly" && !acknowledged.has(s.id)).length;
 
+  const monitorRef = useRef(null);
+  const simulationRef = useRef(null);
+
+  const scrollToMonitoring = () => {
+    setActiveTab("dashboard");
+    setTimeout(() => {
+      monitorRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+  };
+
   return (
     <div
       style={{
-       fontFamily:
-        language === "hi"
-        ? "'Noto Sans Devanagari Variable', sans-serif"
-        : "Inter, 'Segoe UI', system-ui, sans-serif",
-        background: T.offwhite,
+        fontFamily:
+          language === "hi"
+            ? "'Noto Sans Devanagari Variable', sans-serif"
+            : "'Plus Jakarta Sans', 'Inter', system-ui, sans-serif",
+        background: "#F8FAFC",
         minHeight: "100%",
         fontSize: `${14 * fontScale}px`,
-        color: T.text,
+        color: "#0F172A",
         filter: highContrast ? "contrast(1.25) saturate(1.1)" : "none",
+        width: "100%",
+        overflowX: "hidden",
       }}
     >
-      <style>{`
-        @keyframes sg-ping { 0% { transform: scale(1); opacity: 0.6; } 75%,100% { transform: scale(2.1); opacity: 0; } }
-        @keyframes sg-ring { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(1.8); opacity: 0; } }
-        @keyframes sg-fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes sg-spin { to { transform: rotate(360deg); } }
-        * { box-sizing: border-box; }
-        button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
-          outline: 2px solid #1B4B7A; outline-offset: 2px;
-        }
-        @media (prefers-reduced-motion: reduce) {
-          [style*="animation"] { animation: none !important; }
-        }
-      `}</style>
-
+      {/* Sticky Glassmorphic Navbar */}
       <Header
         fontScale={fontScale}
         setFontScale={setFontScale}
@@ -321,71 +338,143 @@ useEffect(() => {
         setLanguage={setLanguage}
         language={language}
         backendConnected={backendConnected}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        alertCount={alertCount}
+        onExploreClick={scrollToMonitoring}
       />
-      <InfoBar stats={stats} reduceMotion={reduceMotion} lastSync={now} />
-      <TabBar active={activeTab} 
-      setActive={setActiveTab}
-       alertCount={alertCount}
-       language={language}
-        />
 
-      <main id="main-content" style={{ minHeight: 600 }}>
+      {/* Primary Navigation Tabs */}
+      <TabBar
+        active={activeTab}
+        setActive={setActiveTab}
+        alertCount={alertCount}
+        language={language}
+      />
+
+      {/* Main Content Area */}
+      <main id="main-content" style={{ minHeight: 700, padding: "28px 20px 40px", maxWidth: 1440, margin: "0 auto" }}>
         {activeTab === "dashboard" && (
-          <div style={{ display: "flex", alignItems: "flex-start" }}>
+          <div
+            ref={monitorRef}
+            className="dashboard-container"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 20,
+              width: "100%",
+            }}
+          >
+            {/* Left Column: Filter Sidebar */}
             <Sidebar
               filters={filters}
               setFilters={setFilters}
               stateOptions={stateOptions}
               resultCount={filtered.length}
             />
-            <div style={{ flex: 1, minWidth: 0, padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Middle Column: Map, Sandbox, Station Detail & Live Timeline */}
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 20,
+              }}
+            >
+              {/* Satellite Map */}
               <IndiaMap
                 stations={filtered}
                 selectedId={selectedId}
                 onSelect={handleSelect}
+                onInspect={handleInspect}
                 reduceMotion={reduceMotion}
               />
-              <SimulationPanel
-                selectedStation={selectedStation}
-                onInject={handleInject}
-                injecting={injecting}
-              />
-              <StationDetail
-                station={selectedStation}
-                neighbors={neighbors}
-                reduceMotion={reduceMotion}
-              />
+
+              {/* Simulation Sandbox */}
+              <div ref={simulationRef}>
+                <SimulationPanel
+                  selectedStation={selectedStation}
+                  onInject={handleInject}
+                  injecting={injecting}
+                />
+              </div>
+
+              {/* Station Detail Card */}
+              <div ref={stationDetailRef} style={{ scrollMarginTop: "80px" }}>
+                <StationDetail
+                  key={selectedStation?.id || "empty"}
+                  station={selectedStation}
+                  neighbors={neighbors}
+                  reduceMotion={reduceMotion}
+                />
+              </div>
+
+              {/* Live Event Audit Timeline */}
               <EventTimeline events={events} />
             </div>
+
+            {/* Right Column: AI Anomaly Intelligence Panel */}
             <AnomalyIntelligencePanel
               stations={stations}
               onSelect={handleSelect}
+              onInspect={handleInspect}
               onAcknowledge={handleAcknowledge}
               acknowledged={acknowledged}
             />
           </div>
         )}
+
         {activeTab === "alerts" && (
           <AlertCenterTab
             stations={stations}
             acknowledged={acknowledged}
             onAcknowledge={handleAcknowledge}
             onSelect={handleSelect}
-            setActiveTab={setActiveTab}
+            onInspect={handleInspect}
           />
         )}
+
         {activeTab === "table" && (
           <TableTab
             stations={stations}
             onSelect={handleSelect}
-            setActiveTab={setActiveTab}
+            onInspect={handleInspect}
           />
         )}
+
         {activeTab === "quality" && <DataQualityTab stations={stations} />}
         {activeTab === "performance" && <ModelPerformanceTab />}
       </main>
 
-      <Footer />
+      {/* Modern SaaS Footer */}
+      <Footer onNavigate={setActiveTab} />
+
+      {/* Station Full-Screen Inspection Modal */}
+      {inspectedStation && (
+        <StationInspectModal
+          station={inspectedStation}
+          neighbors={inspectedNeighbors}
+          reduceMotion={reduceMotion}
+          onClose={() => setInspectedStationId(null)}
+          onAcknowledge={handleAcknowledge}
+          acknowledged={acknowledged}
+        />
+      )}
+
+      {/* Responsive Dashboard Grid Styles */}
+      <style>{`
+        @media (max-width: 1200px) {
+          .dashboard-container {
+            flex-direction: column !important;
+          }
+          .dashboard-container > aside {
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

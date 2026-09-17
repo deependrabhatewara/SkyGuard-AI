@@ -1,82 +1,134 @@
 import React from "react";
-import { Search, RotateCcw } from "lucide-react";
-import { T, STATUS_META } from "../../constants/theme";
+import { Search, RotateCcw, Filter, MapPin } from "lucide-react";
+import { useLanguage } from "../../context/LanguageContext";
 
-const srLabel = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
-const fieldLabel = { fontSize: 11.5, fontWeight: 600, color: T.textMuted, marginBottom: 5 };
+const fieldLabel = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#0F172A",
+  marginBottom: 8,
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+};
+
 const selectStyle = {
   width: "100%",
-  padding: "7px 8px",
+  padding: "9px 12px",
   fontSize: 13,
-  border: `1px solid ${T.border}`,
-  borderRadius: 5,
-  background: T.white,
-  color: T.text,
+  fontWeight: 500,
+  border: "1px solid #E2E8F0",
+  borderRadius: 12,
+  background: "#F8FAFC",
+  color: "#0F172A",
+  outline: "none",
+  transition: "border-color 0.2s ease",
 };
 
 export default function Sidebar({ filters, setFilters, stateOptions, resultCount }) {
+  const { t, translateState } = useLanguage();
   const update = (key, val) => setFilters((f) => ({ ...f, [key]: val }));
   const reset = () => setFilters({ query: "", state: "all", status: "all" });
 
+  const statusLabels = {
+    all: t("allStationsFilter", "All Stations"),
+    healthy: t("healthyFilter", "Healthy"),
+    warning: t("warningFilter", "Warning"),
+    anomaly: t("anomalyFilter", "Anomaly"),
+    offline: t("offlineFilter", "Offline"),
+  };
+
   return (
     <aside
-      style={{ width: 260, flexShrink: 0, borderRight: `1px solid ${T.border}`, background: T.white, padding: 16 }}
+      className="saas-card"
+      style={{
+        width: 280,
+        flexShrink: 0,
+        padding: 22,
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+      }}
       aria-label="Station filters"
     >
-      <div style={{ fontSize: 12, fontWeight: 700, color: T.textFaint, letterSpacing: 0.5, marginBottom: 10 }}>
-        FILTER STATIONS
-      </div>
-
-      <label htmlFor="station-search" style={srLabel}>
-        Search station, district or station ID
-      </label>
-      <div style={{ position: "relative", marginBottom: 14 }}>
-        <Search size={15} style={{ position: "absolute", left: 9, top: 9, color: T.textFaint }} />
-        <input
-          id="station-search"
-          value={filters.query}
-          onChange={(e) => update("query", e.target.value)}
-          placeholder="Search station, district or ID"
+      <div className="flex items-center justify-between">
+        <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A", letterSpacing: 0.3, display: "flex", alignItems: "center", gap: 8 }}>
+          <Filter size={15} color="#7C3AED" />
+          <span>{t("filterStationsTitle", "FILTER STATIONS")}</span>
+        </div>
+        <span
           style={{
-            width: "100%",
-            padding: "8px 10px 8px 30px",
-            fontSize: 13,
-            border: `1px solid ${T.border}`,
-            borderRadius: 5,
-            outline: "none",
-            color: T.text,
+            fontSize: 11,
+            fontWeight: 700,
+            background: "#F5F3FF",
+            color: "#7C3AED",
+            padding: "2px 8px",
+            borderRadius: 9999,
           }}
-        />
+        >
+          {resultCount} {t("matchesCount", "Matches")}
+        </span>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={fieldLabel}>Quick Filters</div>
-        <div className="flex flex-wrap" style={{ gap: 6 }}>
-          {["all", "healthy", "warning", "anomaly", "offline"].map((s) => (
-            <button
-              key={s}
-              onClick={() => update("status", s)}
-              style={{
-                fontSize: 11.5,
-                padding: "5px 10px",
-                borderRadius: 14,
-                cursor: "pointer",
-                border: `1px solid ${filters.status === s ? T.blue : T.border}`,
-                background: filters.status === s ? T.blueFaint : T.white,
-                color: filters.status === s ? T.blue : T.textMuted,
-                fontWeight: 600,
-                textTransform: "capitalize",
-              }}
-            >
-              {s === "all" ? "All Stations" : STATUS_META[s].label}
-            </button>
-          ))}
+      {/* Search Input */}
+      <div>
+        <div style={fieldLabel}>{t("searchQueryLabel", "Search Query")}</div>
+        <div style={{ position: "relative" }}>
+          <Search size={15} style={{ position: "absolute", left: 11, top: 11, color: "#94A3B8" }} />
+          <input
+            id="station-search"
+            value={filters.query}
+            onChange={(e) => update("query", e.target.value)}
+            placeholder={t("searchPlaceholder", "Search by ID, city, state...")}
+            style={{
+              width: "100%",
+              padding: "9px 12px 9px 34px",
+              fontSize: 13,
+              border: "1px solid #E2E8F0",
+              borderRadius: 12,
+              outline: "none",
+              color: "#0F172A",
+              background: "#F8FAFC",
+              transition: "all 0.2s ease",
+            }}
+          />
         </div>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
+      {/* Quick Status Filters */}
+      <div>
+        <div style={fieldLabel}>{t("healthStatusLabel", "Health Status")}</div>
+        <div className="flex flex-wrap" style={{ gap: 6 }}>
+          {["all", "healthy", "warning", "anomaly", "offline"].map((s) => {
+            const isSelected = filters.status === s;
+            return (
+              <button
+                key={s}
+                onClick={() => update("status", s)}
+                style={{
+                  fontSize: 12,
+                  padding: "6px 12px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  border: `1px solid ${isSelected ? "#7C3AED" : "#E2E8F0"}`,
+                  background: isSelected ? "#7C3AED" : "#FFFFFF",
+                  color: isSelected ? "#FFFFFF" : "#475569",
+                  fontWeight: 600,
+                  transition: "all 0.18s ease",
+                  boxShadow: isSelected ? "0 2px 8px rgba(124, 58, 237, 0.25)" : "none",
+                }}
+              >
+                {statusLabels[s] || s}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* State Filter Dropdown */}
+      <div>
         <label htmlFor="state-filter" style={fieldLabel}>
-          State
+          <MapPin size={13} color="#64748B" /> {t("regionalStateLabel", "Regional State")}
         </label>
         <select
           id="state-filter"
@@ -84,67 +136,41 @@ export default function Sidebar({ filters, setFilters, stateOptions, resultCount
           onChange={(e) => update("state", e.target.value)}
           style={selectStyle}
         >
-          <option value="all">All States</option>
+          <option value="all">{t("allStatesOption", "All States & Territories")}</option>
           {stateOptions.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {translateState(s)}
             </option>
           ))}
         </select>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <div style={fieldLabel}>Sensor Parameter</div>
+      {/* Parameter Filter */}
+      <div>
+        <div style={fieldLabel}>{t("primaryMetricLabel", "Primary Metric")}</div>
         <select style={selectStyle} defaultValue="all">
-          <option value="all">All Parameters</option>
-          <option>Temperature</option>
-          <option>Pressure</option>
-          <option>Humidity</option>
+          <option value="all">{t("allMetricsOption", "All Meteorological Metrics")}</option>
+          <option>{t("tempMetricOption", "Temperature (°C)")}</option>
+          <option>{t("pressureMetricOption", "Atmospheric Pressure (hPa)")}</option>
+          <option>{t("humidityMetricOption", "Relative Humidity (%)")}</option>
+          <option>{t("rainfallMetricOption", "Rainfall (mm)")}</option>
         </select>
       </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <div style={fieldLabel}>Time Range</div>
-        <select style={selectStyle} defaultValue="24h">
-          <option value="1h">Last 1 hour</option>
-          <option value="6h">Last 6 hours</option>
-          <option value="24h">Last 24 hours</option>
-          <option value="7d">Last 7 days</option>
-        </select>
-      </div>
-
+      {/* Reset Button */}
       <button
         onClick={reset}
+        className="saas-btn-secondary"
         style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
           width: "100%",
-          padding: "8px",
-          fontSize: 12.5,
-          fontWeight: 600,
-          border: `1px solid ${T.border}`,
-          borderRadius: 5,
-          background: T.offwhite,
-          color: T.textMuted,
-          cursor: "pointer",
+          padding: "10px",
+          fontSize: 13,
+          marginTop: 4,
+          justifyContent: "center",
         }}
       >
-        <RotateCcw size={13} /> Reset Filters
+        <RotateCcw size={14} /> {t("resetFiltersBtn", "Reset All Filters")}
       </button>
-
-      <div
-        style={{
-          marginTop: 16,
-          fontSize: 12,
-          color: T.textFaint,
-          borderTop: `1px solid ${T.border}`,
-          paddingTop: 12,
-        }}
-      >
-        Showing <strong style={{ color: T.text }}>{resultCount}</strong> of stations matching current filters.
-      </div>
     </aside>
   );
 }

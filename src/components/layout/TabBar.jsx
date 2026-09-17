@@ -1,10 +1,33 @@
 import React from "react";
-import { T, TABS } from "../../constants/theme";
+import { TABS } from "../../constants/theme";
+import { useLanguage } from "../../context/LanguageContext";
 
-export default function TabBar({ active, setActive, alertCount, language }) {
+export default function TabBar({ active, setActive, alertCount }) {
+  const { t } = useLanguage();
   return (
-    <nav style={{ background: T.blue, borderBottom: `1px solid ${T.navy}` }} aria-label="Primary">
-      <div className="flex" style={{ padding: "0 24px", overflowX: "auto" }}>
+    <div
+      style={{
+        background: "#F8FAFC",
+        padding: "12px 24px 8px",
+        display: "flex",
+        justifyContent: "center",
+      }}
+      aria-label="Tab Navigation"
+    >
+      <nav
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          background: "#FFFFFF",
+          padding: "6px",
+          borderRadius: 20,
+          border: "1px solid #E2E8F0",
+          boxShadow: "0 4px 16px rgba(0, 0, 0, 0.03)",
+          overflowX: "auto",
+          maxWidth: "100%",
+        }}
+      >
         {TABS.map((tab) => {
           const isActive = active === tab.id;
           const Icon = tab.icon;
@@ -17,39 +40,38 @@ export default function TabBar({ active, setActive, alertCount, language }) {
                 display: "flex",
                 alignItems: "center",
                 gap: 7,
-                padding: "11px 16px",
+                padding: "8px 16px",
+                borderRadius: 14,
                 fontSize: 13,
                 fontWeight: 600,
-                color: isActive ? T.white : "rgba(255,255,255,0.68)",
-                background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
-                borderBottom: isActive ? `3px solid ${T.saffron}` : "3px solid transparent",
+                color: isActive ? "#FFFFFF" : "#475569",
+                background: isActive ? "#7C3AED" : "transparent",
+                border: "none",
                 cursor: "pointer",
                 whiteSpace: "nowrap",
-                borderTop: "none",
-                borderLeft: "none",
-                borderRight: "none",
-                
+                transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: isActive ? "0 4px 12px rgba(124, 58, 237, 0.3)" : "none",
               }}
             >
-              <Icon size={15} /> 
-              {language === "hi"
-  ? {
-      dashboard: "निगरानी डैशबोर्ड",
-      alerts: "अलर्ट केंद्र",
-      table: "स्टेशन रजिस्ट्री",
-      quality: "डेटा गुणवत्ता",
-      performance: "मॉडल प्रदर्शन",
-    }[tab.id] || tab.label
-  : tab.label}
-  
+              <Icon size={15} color={isActive ? "#FFFFFF" : "#64748B"} />
+              <span>
+                {{
+                  dashboard: t("tabDashboard", "Monitoring Dashboard"),
+                  alerts: t("tabAlerts", "Alert Center"),
+                  table: t("tabTable", "Station Registry"),
+                  quality: t("tabQuality", "Data Quality"),
+                  performance: t("tabPerformance", "Model Performance"),
+                }[tab.id] || tab.label}
+              </span>
+
               {tab.id === "alerts" && alertCount > 0 && (
                 <span
                   style={{
-                    background: T.red,
-                    color: T.white,
+                    background: isActive ? "#FFFFFF" : "#EF4444",
+                    color: isActive ? "#7C3AED" : "#FFFFFF",
                     fontSize: 10.5,
-                    fontWeight: 700,
-                    borderRadius: 9,
+                    fontWeight: 800,
+                    borderRadius: 9999,
                     padding: "1px 6px",
                     marginLeft: 2,
                   }}
@@ -60,7 +82,7 @@ export default function TabBar({ active, setActive, alertCount, language }) {
             </button>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
